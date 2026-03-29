@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "MRPhantom"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = ["numpy"]
 
-description = "MRI Phantom of a Slime with Repiratory and Cardiac Motion, and M0, Phase, T1, T2, B0 maps, Boosted by a C-API Backend."
+description = "Volumetric dynamic MRI Phantom of a Slime with respiratory and cardiac motion, and M0, phase, T1, T2, B0, coil sensitivity maps, boosted by a parallel C-API Backend."
 keywords = ["MRI", "Phantom", "Motion", "Quantitative"]
 authors = [{name = "Ryan", email = "ryan_shanghaitech@proton.me"}]
 
