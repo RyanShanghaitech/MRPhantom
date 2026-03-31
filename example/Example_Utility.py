@@ -1,21 +1,21 @@
 from numpy import *
 from matplotlib.pyplot import *
 from matplotlib.colors import ListedColormap
-from mrphantom import *
+import mrphantom as pht
 
 nDim = 3
 nPix = 128
 
 random.seed(0)
-mapPh = genPhMap(nDim, nPix, std=pi/16)
-mapB0 = genB0Map(nDim, nPix, std=1) # unit: ppm
+mapPh = pht.genPhMap(nDim, nPix, std=pi/16)
+mapB0 = pht.genB0Map(nDim, nPix, std=1) # unit: ppm
 
-arrPhant = genPhant(nDim, nPix)
-mapM0 = Enum2M0(arrPhant)
-mapT1 = Enum2T1(arrPhant)
-mapT2 = Enum2T2(arrPhant)
-mapOm = Enum2Om(arrPhant)
-mapC = genCsm(nDim, nPix, mean=0, std=pi/16)
+arrPhant = pht.genPhant(nDim, nPix)
+mapM0 = pht.Enum2M0(arrPhant)
+mapT1 = pht.Enum2T1(arrPhant)
+mapT2 = pht.Enum2T2(arrPhant)
+mapOm = pht.Enum2Om(arrPhant)
+mapC = pht.genCsm(nDim, nPix, mean=0, std=pi/16)
 
 # plot
 cmT1 = ListedColormap(loadtxt("./Resource/lipari.csv"), name="T1")
