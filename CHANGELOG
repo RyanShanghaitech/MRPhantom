@@ -1,3 +1,6 @@
+1.0.4 (April 4, 2026)
+Include `scipy` as a denpendency and add `gxx` as a prerequirement in `README.md`.
+
 1.0.3 (March 31, 2026)
 Update examples.
 

@@ -6,6 +6,10 @@ A quantitative phantom of a slime with cardiac and respiratory motion.
 Since a 3D + T dataset is so large, this package generates phantom on each tick on demand, according to the given shape parameters. This phantom has a parallel C++ backend for nearly real-time 3D phantom generation.
 
 ## Install
+Install `gxx` via conda:
+```bash
+$ conda install gxx 
+```
 Using `pip`:
 ```bash
 $ pip install mrphantom
