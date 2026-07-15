@@ -33,7 +33,8 @@ while 1:
     for iT in range(0,nT,10):
         t = time()
         arrPhant = pht.genPhant(3, nPix, arrAmpRes[iT], arrAmpCar[iT])
-        arrM0 = pht.Enum2M0(arrPhant, arrAmpCar[iT])
+        arrM0 = pht.Enum2SS(arrPhant, arrAmpCar[iT])
+        arrM0 /= arrM0.max()
         if iT%10==0: print(f"{(time()-t)*1e3:.3f} ms / frame")
         
         axim1.set_data(arrM0[nPix//2,:,:])

@@ -5,7 +5,7 @@ import mrphantom as pht
 # 2D
 nPix = 4096
 arrPhant = pht.genPhant(nAx=2, nPix=nPix)
-arrM0 = pht.Enum2M0(arrPhant)
+arrM0 = pht.Enum2SS(arrPhant)
 
 arrM0Abs = abs(arrM0)
 figure(figsize=(3,3), dpi=120)
@@ -14,7 +14,7 @@ imshow(arrM0Abs, cmap="gray"); colorbar()
 # 3D
 nPix = 256
 arrPhant = pht.genPhant(nAx=3, nPix=nPix)
-arrM0 = pht.Enum2M0(arrPhant)
+arrM0 = pht.Enum2SS(arrPhant)
 
 arrM0Abs = abs(arrM0)
 figure(figsize=(9,3), dpi=120)

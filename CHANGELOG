@@ -1,3 +1,9 @@
+2.0.0 (July 15, 2026)
+Rewrite tissue properties to make them more factually correct.
+Add `Enum2SS()` so that user can obtain steady-state signal instead of proton density map, which would have more realistic contrast.
+Rename `Enum2M0()` to `Enum2PD()`, PD (proton density) should be real-valued, while M0 is complex valued.
+Remove cardiac motion amplitude from `Enum2PD()` and add then to `Enum2SS()` to make PD map more consistent with its definition.
+
 1.0.4 (April 4, 2026)
 Include `scipy` as a denpendency and add `gxx` as a prerequirement in `README.md`.
 
