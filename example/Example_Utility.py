@@ -11,7 +11,7 @@ mapPh = pht.genPhMap(nDim, nPix, std=pi/16)
 mapB0 = pht.genB0Map(nDim, nPix, std=1) # unit: ppm
 
 arrPhant = pht.genPhant(nDim, nPix)
-mapM0 = pht.Enum2M0(arrPhant)
+mapM0 = pht.Enum2PD(arrPhant)
 mapT1 = pht.Enum2T1(arrPhant)
 mapT2 = pht.Enum2T2(arrPhant)
 mapOm = pht.Enum2Om(arrPhant)

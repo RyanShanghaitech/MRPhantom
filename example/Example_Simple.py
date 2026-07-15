@@ -3,13 +3,16 @@ from matplotlib.pyplot import *
 import mrphantom as pht
 
 # 2D
-nPix = 4096
+nPix = 256
 arrPhant = pht.genPhant(nAx=2, nPix=nPix)
-arrM0 = pht.Enum2SS(arrPhant)
+mapPh=[pht.genPhMap(2,nPix,std=pi/4) for _ in range(pht.Tissue.NTissue.value)]
+arrM0 = pht.Enum2SS(arrPhant, mapPh=mapPh)
 
-arrM0Abs = abs(arrM0)
-figure(figsize=(3,3), dpi=120)
-imshow(arrM0Abs, cmap="gray"); colorbar()
+figure(figsize=(6,3), dpi=150)
+subplot(121)
+imshow(abs(arrM0), cmap="gray"); colorbar()
+subplot(122)
+imshow(angle(arrM0), cmap="hsv", vmin=-pi, vmax=pi); colorbar()
 
 # 3D
 nPix = 256
@@ -17,7 +20,7 @@ arrPhant = pht.genPhant(nAx=3, nPix=nPix)
 arrM0 = pht.Enum2SS(arrPhant)
 
 arrM0Abs = abs(arrM0)
-figure(figsize=(9,3), dpi=120)
+figure(figsize=(9,3), dpi=150)
 subplot(131)
 imshow(arrM0Abs[nPix//2,:,:], cmap="gray"); colorbar()
 subplot(132)
@@ -33,7 +36,7 @@ V = arrM0Abs  # already computed above (shape: [nPix,nPix,nPix])
 vmin = V.min()
 vmax = V.max()
 
-figA = figure(figsize=(9, 3), dpi=120)
+figA = figure(figsize=(9, 3), dpi=150)
 ax1 = figA.add_subplot(131)
 ax2 = figA.add_subplot(132)
 ax3 = figA.add_subplot(133)

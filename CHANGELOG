@@ -1,3 +1,7 @@
+2.1.0 (July 15, 2026)
+Bug fix in `EnumSS()`
+Allow per-tissue phase maps in `Enum2SS()`
+
 2.0.0 (July 15, 2026)
 Rewrite tissue properties to make them more factually correct.
 Add `Enum2SS()` so that user can obtain steady-state signal instead of proton density map, which would have more realistic contrast.

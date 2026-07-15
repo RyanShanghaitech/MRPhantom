@@ -30,12 +30,11 @@ while 1:
     for iT in range(nT):
         t = time()
         arrPhant = pht.genPhant(2, nPix, arrAmpRes[iT], arrAmpCar[iT])
-        # arrM0 = pht.Enum2SS(arrPhant, arrAmpCar[iT])
         arrM0 = pht.Enum2SS(arrPhant, arrAmpCar[iT], bSSFP=1)
-        arrM0 /= arrM0.max()
+        arrM0Abs = abs(arrM0/arrM0.max())
         if iT%10==0: print(f"{(time()-t)*1e3:.3f} ms / frame")
         
-        axim.set_data(arrM0)
+        axim.set_data(arrM0Abs)
         ax.set_title(f"time: {iT*tRes:.2f}s")
         draw()
         pause(tRes/10)
