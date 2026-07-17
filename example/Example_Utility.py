@@ -5,6 +5,7 @@ import mrphantom as pht
 
 nDim = 3
 nPix = 128
+B0 = 5
 
 random.seed(0)
 mapPh = pht.genPhMap(nDim, nPix, std=pi/16)
@@ -12,9 +13,9 @@ mapB0 = pht.genB0Map(nDim, nPix, std=1) # unit: ppm
 
 arrPhant = pht.genPhant(nDim, nPix)
 mapM0 = pht.Enum2PD(arrPhant)
-mapT1 = pht.Enum2T1(arrPhant)
-mapT2 = pht.Enum2T2(arrPhant)
-mapOm = pht.Enum2Om(arrPhant)
+mapT1 = pht.Enum2T1(arrPhant, B0)
+mapT2 = pht.Enum2T2(arrPhant, B0)
+mapOm = pht.Enum2Om(arrPhant, B0)
 mapC = pht.genCsm(nDim, nPix, mean=0, std=pi/16)
 
 # plot
@@ -42,7 +43,8 @@ imshow(mapT1[:,nPix//2,:]*1000, cmap=cmT1); colorbar().set_label("ms"); title("T
 subplot(223)
 imshow(mapT2[:,nPix//2,:]*1000, cmap=cmT2); colorbar().set_label("ms"); title("T2 map")
 subplot(224)
-imshow(mapOm[:,nPix//2,:]); colorbar(); title("Om map")
+imshow(mapOm[:,nPix//2,:]); colorbar(); title("B0 map")
+tight_layout()
 
 # coil sensitivity map
 mapCsmAbs = abs(mapC)

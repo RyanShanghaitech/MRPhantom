@@ -1,32 +1,39 @@
 from numpy import *
 from matplotlib.pyplot import *
-import mrphantom as pht
+import mrphantom as mpt
 
 # 2D
 nPix = 256
-arrPhant = pht.genPhant(nAx=2, nPix=nPix)
-mapPh=[pht.genPhMap(2,nPix,std=pi/4) for _ in range(pht.Tissue.NTissue.value)]
-arrM0 = pht.Enum2SS(arrPhant, mapPh=mapPh)
+arrPhant = mpt.genPhant(nAx=2, nPix=nPix)
+mapPh=[mpt.genPhMap(2,nPix,std=pi/4) for _ in range(mpt.Tissue.NTissue.value)]
+arrM0 = mpt.Enum2SS(arrPhant, mapPh=mapPh, bSSFP=1)
 
 figure(figsize=(6,3), dpi=150)
 subplot(121)
 imshow(abs(arrM0), cmap="gray"); colorbar()
+title("Magnitude")
 subplot(122)
 imshow(angle(arrM0), cmap="hsv", vmin=-pi, vmax=pi); colorbar()
+title("Phase")
+tight_layout()
 
 # 3D
 nPix = 256
-arrPhant = pht.genPhant(nAx=3, nPix=nPix)
-arrM0 = pht.Enum2SS(arrPhant)
+arrPhant = mpt.genPhant(nAx=3, nPix=nPix)
+arrM0 = mpt.Enum2SS(arrPhant)
 
 arrM0Abs = abs(arrM0)
 figure(figsize=(9,3), dpi=150)
 subplot(131)
 imshow(arrM0Abs[nPix//2,:,:], cmap="gray"); colorbar()
+title("z-plane")
 subplot(132)
 imshow(arrM0Abs[:,nPix//2,:], cmap="gray"); colorbar()
+title("y-plane")
 subplot(133)
 imshow(arrM0Abs[:,:,nPix//2], cmap="gray"); colorbar()
+title("x-plane")
+tight_layout()
 
 show()
 

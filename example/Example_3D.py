@@ -1,6 +1,6 @@
 from numpy import *
 from matplotlib.pyplot import *
-import mrphantom as pht
+import mrphantom as mpt
 from time import time
 
 tScan = 10
@@ -10,8 +10,8 @@ nPix = 256
 
 cycRes = pi/2
 cycCar = 1
-arrAmpRes = pht.genResAmp(tScan, tRes, cycRes)
-arrAmpCar = pht.genCarAmp(tScan, tRes, cycCar)
+arrAmpRes = mpt.genResAmp(tScan, tRes, cycRes)
+arrAmpCar = mpt.genCarAmp(tScan, tRes, cycCar)
 
 fig = figure()
 ax = fig.add_subplot(211)
@@ -32,8 +32,8 @@ axim3 = ax3.imshow(zeros([nPix,nPix]), cmap='gray', vmin=0, vmax=1)
 while 1:
     for iT in range(0,nT,10):
         t = time()
-        arrPhant = pht.genPhant(3, nPix, arrAmpRes[iT], arrAmpCar[iT])
-        arrM0 = pht.Enum2SS(arrPhant, arrAmpCar[iT])
+        arrPhant = mpt.genPhant(3, nPix, arrAmpRes[iT], arrAmpCar[iT])
+        arrM0 = mpt.Enum2SS(arrPhant, arrAmpCar[iT])
         arrM0Abs = abs(arrM0/arrM0.max())
         if iT%10==0: print(f"{(time()-t)*1e3:.3f} ms / frame")
         
