@@ -23,14 +23,14 @@ ax.set_title("Cardiac")
 
 fig = figure(figsize=(6,6), dpi=120)
 ax = fig.add_subplot(111)
-arrPhant = mpt.genPhant(2, nPix)
 axim = ax.imshow(zeros([nPix,nPix]), cmap='gray', vmin=0, vmax=1)
 
+mpt.initSS_bSSFP(1.5)
 while 1:
     for iT in range(nT):
         t = time()
-        arrPhant = mpt.genPhant(2, nPix, arrAmpRes[iT], arrAmpCar[iT])
-        arrM0 = mpt.Enum2SS(arrPhant, arrAmpCar[iT], bSSFP=1)
+        arrPhant = mpt.genPhant((nPix,)*2, arrAmpRes[iT], arrAmpCar[iT])
+        arrM0 = mpt.Enum2SS(arrPhant)
         arrM0Abs = abs(arrM0/arrM0.max())
         if iT%10==0: print(f"{(time()-t)*1e3:.3f} ms / frame")
         

@@ -4,9 +4,9 @@ import mrphantom as mpt
 
 # 2D
 nPix = 256
-arrPhant = mpt.genPhant(nAx=2, nPix=nPix)
-mapPh=[mpt.genPhMap(2,nPix,std=pi/4) for _ in range(mpt.Tissue.NTissue.value)]
-arrM0 = mpt.Enum2SS(arrPhant, mapPh=mapPh, bSSFP=1)
+arrPhant = mpt.genPhant((nPix,)*2)
+mpt.initSS_bSSFP(1.5)
+arrM0 = mpt.Enum2SS(arrPhant)*mpt.genPhMap((nPix,)*2)
 
 figure(figsize=(6,3), dpi=150)
 subplot(121)
@@ -19,7 +19,8 @@ tight_layout()
 
 # 3D
 nPix = 256
-arrPhant = mpt.genPhant(nAx=3, nPix=nPix)
+arrPhant = mpt.genPhant((nPix,)*3)
+mpt.initSS_bSSFP(1.5)
 arrM0 = mpt.Enum2SS(arrPhant)
 
 arrM0Abs = abs(arrM0)

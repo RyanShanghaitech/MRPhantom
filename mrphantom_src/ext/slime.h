@@ -5,7 +5,7 @@
 
 extern bool genPhant
 (
-    int64_t lNDim, int64_t lNPix,
-    double dResAmp, double dCarAmp,
+    int64_t nAx, int64_t nZ, int64_t nY, int64_t nX,
+    double ampRes, double ampCar,
     std::vector<uint8_t>* voSlime
 );

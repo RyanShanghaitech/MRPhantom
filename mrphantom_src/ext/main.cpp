@@ -6,11 +6,11 @@
 #include <cstring>
 #include <slime.h>
 
-bool inline checkNarg(int64_t lNarg, int64_t lNargExp)
+bool inline checkNarg(int64_t nArg, int64_t nArgExp)
 {
-    if (lNarg != lNargExp)
+    if (nArg != nArgExp)
     {
-        printf("wrong num. of arg, narg=%ld, %ld expected\n", lNarg, lNargExp);
+        printf("wrong num. of arg, narg=%ld, %ld expected\n", nArg, nArgExp);
         abort();
         return false;
     }
@@ -19,34 +19,36 @@ bool inline checkNarg(int64_t lNarg, int64_t lNargExp)
 
 static PyObject* genPhant_py(PyObject* self, PyObject* const* args, Py_ssize_t nargs)
 {
-    checkNarg(nargs,4);
+    checkNarg(nargs,6);
     int64_t nAx = PyLong_AsLongLong(args[0]);
-    int64_t nPix = PyLong_AsLongLong(args[1]);
-    double ampRes = PyFloat_AsDouble(args[2]);
-    double ampCar = PyFloat_AsDouble(args[3]);
+    int64_t nZ = nAx==3 ? PyLong_AsLongLong(args[1]) : 1;
+    int64_t nY = PyLong_AsLongLong(args[2]);
+    int64_t nX = PyLong_AsLongLong(args[3]);
+    double ampRes = PyFloat_AsDouble(args[4]);
+    double ampCar = PyFloat_AsDouble(args[5]);
 
     // Generate into std::vector
-    std::vector<uint8_t> vu8Phant;
-    genPhant(nAx, nPix, ampRes, ampCar, &vu8Phant);
+    std::vector<uint8_t> vu8Phant(nZ*nY*nX, 0);
+    genPhant(nAx, nZ, nY, nX, ampRes, ampCar, &vu8Phant);
 
     // convert vector to numpy array
     PyObject* pPyObj_Arr;
     {
-        npy_intp aDims[] = {nPix, nPix, nPix};
-        pPyObj_Arr = PyArray_ZEROS(nAx, aDims, NPY_UINT8, 0);
+        npy_intp aDims[] = {nZ, nY, nX};
+        pPyObj_Arr = PyArray_ZEROS(nAx, aDims+3-nAx, NPY_UINT8, 0);
     }
 
     // fill the data in
     std::memcpy(PyArray_DATA((PyArrayObject*)pPyObj_Arr),
                 vu8Phant.data(),
                 vu8Phant.size() * sizeof(uint8_t));
-
+    
     return pPyObj_Arr;
 }
 
 static PyMethodDef aMeth[] =
 {
-    {"genPhant", (PyCFunction)genPhant_py, METH_FASTCALL, "genPhant(nAx, nPix, ampRes, ampCar) -> np.ndarray[uint8]"},
+    {"genPhant", (PyCFunction)genPhant_py, METH_FASTCALL, "genPhant(nAx, nZ, nY, nX, ampRes, ampCar) -> np.ndarray[uint8]"},
     {NULL, NULL, 0, NULL}
 };
 

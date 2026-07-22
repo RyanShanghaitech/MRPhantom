@@ -1,5 +1,7 @@
-# from .Type import Part
-# from .Function import genPhan
-# from .Utility import genAmp, genCsm
+from . import utility
 
-from .Function import genPhant, genPhMap, genB0Map, genCsm, genAmp, genResAmp, genCarAmp, Enum2PD, Enum2T1, Enum2T2, Enum2Adc, Enum2Om, Enum2SS, Enum2T2s, Tissue
+with open("test/nmr_para.xml") as f:
+    dictNmrPara = utility.xml2dict(f)
+lstTissue = list(dictNmrPara.keys())
+
+from .Function import genPhant, genPhMap, genB0Map, genCsm, genAmp, genResAmp, genCarAmp, Enum2Para, Enum2PD, Enum2T1, Enum2T2, Enum2Adc, Enum2Om, initSS_bSSFP, initSS_FLASH, Enum2SS, Enum2T2s

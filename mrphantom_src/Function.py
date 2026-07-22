@@ -1,40 +1,49 @@
 from . import ext
 from numpy import *
+from numpy.fft import fftn, ifftn, fftshift, ifftshift
 from numpy.typing import NDArray
-from enum import Enum
+from typing import *
+from scipy.signal.windows import gaussian
 from scipy.ndimage import gaussian_filter
+from . import dictNmrPara, lstTissue
 
-class Tissue(Enum):
-    Air = 0
-    Fat = 1
-    Myo = 2 # Myocadium
-    Blood = 3
-    Liver = 4
-    Vessel = 5
-    NTissue = 6
-
-def genPhant(nAx:int=2, nPix:int=256, ampRes:float=0, ampCar:float=0) -> NDArray: # call C++ backend to generate a phantom
+def genPhant(shape:Tuple, ampRes:float=0, ampCar:float=0) -> NDArray: # call C++ backend to generate a phantom
     """
     generate a phantom in Enum type
     
     Args:
-        nAx: number of dimensions
-        nPix: number of pixels
+        shape: shape of the phantom (independent from FOV)
         ampRes: respiratory motion amplitude
         ampCar: cardiac motion amplitude
         
     Returns:
         NDArray contains elements in `Tissue` enum type
     """
-    return ext.genPhant(nAx, nPix, ampRes, ampCar)
+    nAx = len(shape)
+    shape = (1,)*(3-len(shape)) + shape
+    return ext.genPhant(nAx, *shape, ampRes, ampCar)
 
-def genPhMap(nAx:int=2, nPix:int=256, mean:int|float|None=None, std:int|float=pi/16) -> NDArray:
+def LPF(arr:NDArray, std:float) -> NDArray:
+    lstWind = []
+    for l in arr.shape:
+       lstWind.append(gaussian(l, 1/(2*pi*std)))
+    wind = ones(arr.shape)
+    for a, w in enumerate(lstWind):
+        shape = [1] * arr.ndim
+        shape[a] = len(w)
+        wind *= w.reshape(shape)
+
+    arr = fftshift(fftn(ifftshift(arr)))
+    arr *= wind
+    arr = fftshift(ifftn(ifftshift(arr)))
+    return arr
+
+def genPhMap(shape:Tuple, mean:int|float|None=None, std:int|float=pi/16) -> NDArray:
     """
     generate random phase map
     
     Args:
-        nAx: number of dimensions
-        nPix: number of pixels
+        shape: shape of the phantom (independent from FOV)
         mean: mean of the noise
         std: std of the noise
         
@@ -42,9 +51,8 @@ def genPhMap(nAx:int=2, nPix:int=256, mean:int|float|None=None, std:int|float=pi
         smooth complex noise with unity magnitude
     """
     if mean is None: mean = random.uniform(-pi,pi)
-    mapPh = random.uniform(-pi, pi, [nPix for _ in range(nAx)])
-    sigma = nPix/4
-    mapPh = gaussian_filter(mapPh, sigma)
+    mapPh = random.uniform(-pi, pi, shape)
+    mapPh = LPF(mapPh, 1/4).real
     # normalize
     mapPh -= mapPh.mean(); mapPh = asarray(mapPh)
     mapPh /= mapPh.std()
@@ -55,22 +63,20 @@ def genPhMap(nAx:int=2, nPix:int=256, mean:int|float|None=None, std:int|float=pi
     mapPh = mapPh/abs(mapPh)
     return mapPh
 
-def genB0Map(nAx:int=2, nPix:int=256, mean:int|float=0, std:int|float=1e-6*(2*pi*42.58e6*3)) -> NDArray:
+def genB0Map(shape:Tuple, mean:int|float=0, std:int|float=1e-6*(2*pi*42.58e6*3)) -> NDArray:
     """
     generate random B0 map
     
     Args:
-        nAx: number of dimensions
-        nPix: number of pixels
+        shape: shape of the phantom (independent from FOV)
         mean: mean of the noise
         std: std of the noise
         
     Returns:
         smooth random noise in `rad/s`
     """
-    mapB0 = random.uniform(-1, 1, [nPix for _ in range(nAx)])
-    sigma = nPix/4
-    mapB0 = gaussian_filter(mapB0, sigma)
+    mapB0 = random.uniform(-1, 1, shape)
+    mapB0 = LPF(mapB0, 1/4).real
     # normalize
     mapB0 -= mapB0.mean(); mapB0 = asarray(mapB0)
     mapB0 /= mapB0.std()
@@ -78,13 +84,12 @@ def genB0Map(nAx:int=2, nPix:int=256, mean:int|float=0, std:int|float=1e-6*(2*pi
     mapB0 += mean
     return mapB0
 
-def genCsm(nAx:int=2, nPix:int=256, nCh:int=12, mean:int|float|None=None, std:int|float=pi/16) -> NDArray:
+def genCsm(shape:Tuple, nCh:int=12, mean:int|float|None=None, std:int|float=pi/16) -> NDArray:
     """
     generate random coil sensitivity map
     
     Args:
-        nAx: number of dimensions
-        nPix: number of pixels
+        shape: shape of the phantom (independent from FOV)
         nCh: number of coils
         mean: mean of the noise
         std: std of the noise
@@ -93,10 +98,11 @@ def genCsm(nAx:int=2, nPix:int=256, nCh:int=12, mean:int|float|None=None, std:in
         complex smooth and inhomogeneous map
     """
     if mean is None: mean = random.uniform(-pi,pi)
-    mapC = zeros([nCh,*(nPix for _ in range(nAx))], dtype=complex128)
+    nAx = len(shape)
+    mapC = zeros([nCh,*shape], dtype=complex128)
     arrCoor = meshgrid\
     (
-        *(linspace(-0.5,0.5,nPix,0) for _ in range(nAx)),
+        *(linspace(-0.5,0.5,s,0) for s in shape),
         indexing="ij"
     ); arrCoor = array(arrCoor).transpose(*arange(1,nAx+1), 0)
     arrTht = linspace(0,2*pi,nCh,0)
@@ -106,7 +112,7 @@ def genCsm(nAx:int=2, nPix:int=256, nCh:int=12, mean:int|float|None=None, std:in
         arrCoorCoil[0::2,0] = 0.2
         arrCoorCoil[1::2,0] = -0.2
     for iCh in range(nCh):
-        mapC[iCh] = genPhMap(nAx=nAx, nPix=nPix, mean=mean, std=std)
+        mapC[iCh] = genPhMap(shape, mean=mean, std=std)
         dist = sqrt(sum((arrCoor - arrCoorCoil[iCh])**2, axis=-1))
         mapC[iCh] *= exp(-dist)
     return mapC
@@ -166,83 +172,141 @@ def genCarAmp(tScan:int|float, tRes:int|float, cyc:int|float=1) -> NDArray:
     """
     return 10e-3*genAmp(tScan, tRes, cyc, 0)
 
-def Enum2SS(arrPht:NDArray, ampCar:double=0e0, B0:double=5.0, TR:double=None, TE:double=None, FA_deg:double=None, bSSFP:bool=False, mapPh:NDArray=None) -> NDArray:
+def fB02strB0(B0:int|float) -> str:
+    """
+    convert B0 data type from float/int to string.
+
+    Args:
+        B0: B0 in number format
+    
+    Returns:
+        B0 in string format
+    """
+    if isclose(B0,0.55): return "B0_0T55"
+    if isclose(B0,1.5): return "B0_1T5"
+    if isclose(B0,3.0): return "B0_3T"
+    if isclose(B0,5.0): return "B0_5T0"
+    if isclose(B0,9.4): return "B0_9T4"
+    raise RuntimeError("unsupported B0")
+
+def initSS_bSSFP(
+    B0: float,
+    TR: float = 5e-3,
+    FA_deg: float = 60.0,
+) -> None:
+    """
+    Precalculate and store the bSSFP steady-state signal Mss for every tissue.
+    
+    Args:
+        B0: field strength
+        TR: repetition time
+        FA_deg: flip angle in degree
+    """
+    strB0 = fB02strB0(B0)
+    FA = deg2rad(FA_deg)
+
+    for strTissue in lstTissue:
+        dictTissue = dictNmrPara[strTissue]
+
+        PD = dictTissue[strB0]["PD"]
+        T1 = dictTissue[strB0]["T1"]
+        T2 = dictTissue[strB0]["T2"]
+
+        E1 = exp(-TR / T1)
+        E2 = exp(-TR / T2)
+
+        dictTissue["Mss"] = (
+            PD
+            * (1 - E1)
+            * sqrt(E2)
+            * sin(FA)
+            / (1 - (E1 - E2) * cos(FA) - E1 * E2)
+        )
+
+def initSS_FLASH(
+    B0: float,
+    TE: float = 1e-3,
+    TR: float = 10e-3,
+    FA_deg: float = 10.0,
+) -> None:
+    """
+    Precalculate and store the FLASH steady-state signal Mss for every tissue.
+    
+    Args:
+        B0: field strength
+        TE: echo time
+        TR: repetition time
+        FA_deg: flip angle in degree
+    """
+    strB0 = fB02strB0(B0)
+    FA = deg2rad(FA_deg)
+
+    for strTissue in lstTissue:
+        dictTissue = dictNmrPara[strTissue]
+
+        PD = dictTissue[strB0]["PD"]
+        T1 = dictTissue[strB0]["T1"]
+        T2s = dictTissue[strB0]["T2s"]
+
+        E1 = exp(-TR / T1)
+        E2 = exp(-TE / T2s)
+
+        dictTissue["Mss"] = (
+            PD
+            * sin(FA)
+            * (1 - E1)
+            / (1 - cos(FA) * E1)
+            * E2
+        )
+
+def Enum2SS(arrPht:NDArray) -> NDArray:
     """
     get steady-state signal map of a phantom generated by `genPhant()`
     
     Args:
         arrPht: phantom
-        ampCar: cardiac motion amplitude
-        B0: field strength in Tesla
-        TR: repetition time
-        TE: echo time
-        FA_deg: flip angle in degree
-        bSSFP: True for bSSFP, False for FLASH
-        mapPh: phase map array, can be generated using genPhMap() `NTissue` times
         
     Returns:
-        steady state signal map of the given phantom
+        steady-state signal map of the given phantom
     """
-    mapPD = Enum2PD(arrPht)
-    mapT1 = Enum2T1(arrPht, B0)
-    if bSSFP:
-        if TR is None: TR = 5e-3
-        if TE is None: TE = 1e-3
-        if FA_deg is None: FA_deg = 60
-        FA = FA_deg * pi/180
-        mapT2 = Enum2T2(arrPht, B0)
-        E1 = exp(-TR/mapT1)
-        E2 = exp(-TR/mapT2)
-        mapSS = (
-            mapPD
-            * (1-E1)
-            * sqrt(E2)
-            * sin(FA)
-            / (1 - (E1-E2)*cos(FA) - E1*E2)
-        ) + 0j
-    else:
-        if TR is None: TR = 10e-3
-        if TE is None: TE = 1e-3
-        if FA_deg is None: FA_deg = 10
-        FA = FA_deg * pi/180
-        mapT2s = Enum2T2s(arrPht, B0)
-        E1 = exp(-TR/mapT1)
-        E2 = exp(-TE/mapT2s)
-        mapSS = (
-            mapPD
-            *sin(FA)
-            *(1-E1)
-            /(1-cos(FA)*E1)
-            *E2
-        ) + 0j
-    kInFow = 1.5 + max(-ampCar,0)*20
-    mapSS[arrPht==Tissue.Blood.value] *= kInFow
-    mapSS[arrPht==Tissue.Vessel.value] *= kInFow
-    if mapPh is not None:
-        for iTissue in range(Tissue.NTissue.value):
-            mapSS[arrPht==iTissue] *= mapPh[iTissue][arrPht==iTissue]
+    mapSS = zeros_like(arrPht, dtype=float64)
+    for strTissue in lstTissue:
+        try: mapSS[arrPht==dictNmrPara[strTissue]["enum"]] = dictNmrPara[strTissue]["Mss"]
+        except KeyError: raise RuntimeError("Please call `initS_FLASH()` or `initS_bSSFP()` before `Enum2SS()`.")
     return mapSS
 
-def Enum2PD(arrPht:NDArray) -> NDArray:
+def Enum2Para(arrPht:NDArray, B0:str|float="B0_1T5", strPara:str="PD") -> NDArray:
     """
     get PD map of a phantom generated by `genPhant()`
     
     Args:
         arrPht: phantom
+        B0: "B0_0T55" / "B0_1T5" / "B0_3T" / "B0_5T" / "B0_9T4" / 0.55 / 1.5 / 3.0 / 5.0 / 9.4
+        strPara: "PD" / "T1" / "T2" / "T2s" / "ADC" / "Om"
         
     Returns:
         Proton density map of the given phantom, relevant to water
     """
-    mapPD = zeros_like(arrPht, dtype=float64)
-    mapPD[arrPht==Tissue.Air.value] = 0
-    mapPD[arrPht==Tissue.Fat.value] = 0.95
-    mapPD[arrPht==Tissue.Myo.value] = 0.80
-    mapPD[arrPht==Tissue.Blood.value] = 0.95
-    mapPD[arrPht==Tissue.Liver.value] = 0.90
-    mapPD[arrPht==Tissue.Vessel.value] = 0.95
-    return mapPD
+    mapPara = zeros_like(arrPht, dtype=float64)
+    if not isinstance(B0, str): B0 = fB02strB0(B0)
+    for strTissue in lstTissue:
+        mapPara[arrPht==dictNmrPara[strTissue]["enum"]] = dictNmrPara[strTissue][B0][strPara]
+    return mapPara
 
-def Enum2T1(arrPht:NDArray, B0:int|float) -> NDArray:
+def Enum2PD(arrPht:NDArray, B0:str|int|float) -> NDArray:
+    """
+    get PD map of a phantom generated by `genPhant()`
+    
+    Args:
+        arrPht: phantom
+        B0: field strength in Tesla
+        
+    Returns:
+        Proton density map of the given phantom, relevant to water
+    """
+    return Enum2Para(arrPht, B0, "PD")
+
+def Enum2T1(arrPht:NDArray, B0:str|int|float) -> NDArray:
     """
     get T1 map of a phantom generated by `genPhant()`
     
@@ -253,47 +317,9 @@ def Enum2T1(arrPht:NDArray, B0:int|float) -> NDArray:
     Returns:
         T1 map of the given phantom
     """
-    mapT1 = zeros_like(arrPht, dtype=float64)
-    if B0==0.55:
-        mapT1[arrPht==Tissue.Air.value] = inf
-        mapT1[arrPht==Tissue.Fat.value] = 280e-3
-        mapT1[arrPht==Tissue.Myo.value] = 700e-3
-        mapT1[arrPht==Tissue.Blood.value] = 1120e-3
-        mapT1[arrPht==Tissue.Liver.value] = 450e-3
-        mapT1[arrPht==Tissue.Vessel.value] = 1120e-3
-    elif B0==1.5:
-        mapT1[arrPht==Tissue.Air.value] = inf
-        mapT1[arrPht==Tissue.Fat.value] = 350e-3
-        mapT1[arrPht==Tissue.Myo.value] = 1030e-3
-        mapT1[arrPht==Tissue.Blood.value] = 1450e-3
-        mapT1[arrPht==Tissue.Liver.value] = 1580e-3
-        mapT1[arrPht==Tissue.Vessel.value] = 1450e-3
-    elif B0==3.0:
-        mapT1[arrPht==Tissue.Air.value] = inf
-        mapT1[arrPht==Tissue.Fat.value] = 400e-3
-        mapT1[arrPht==Tissue.Myo.value] = 1200e-3
-        mapT1[arrPht==Tissue.Blood.value] = 1800e-3
-        mapT1[arrPht==Tissue.Liver.value] = 800e-3
-        mapT1[arrPht==Tissue.Vessel.value] = 1800e-3
-    elif B0==5.0:
-        mapT1[arrPht==Tissue.Air.value] = inf
-        mapT1[arrPht==Tissue.Fat.value] = 450e-3
-        mapT1[arrPht==Tissue.Myo.value] = 1450e-3
-        mapT1[arrPht==Tissue.Blood.value] = 2100e-3
-        mapT1[arrPht==Tissue.Liver.value] = 1000e-3
-        mapT1[arrPht==Tissue.Vessel.value] = 2100e-3
-    elif B0==9.4:
-        mapT1[arrPht==Tissue.Air.value] = inf
-        mapT1[arrPht==Tissue.Fat.value] = 500e-3
-        mapT1[arrPht==Tissue.Myo.value] = 1800e-3
-        mapT1[arrPht==Tissue.Blood.value] = 2500e-3
-        mapT1[arrPht==Tissue.Liver.value] = 1200e-3
-        mapT1[arrPht==Tissue.Vessel.value] = 2500e-3
-    else:
-        raise RuntimeError(f"B0={B0:.2f} not available.")
-    return mapT1
+    return Enum2Para(arrPht, B0, "T1")
 
-def Enum2T2(arrPht:NDArray, B0:int|float) -> NDArray:
+def Enum2T2(arrPht:NDArray, B0:str|int|float) -> NDArray:
     """
     get T2 map of a phantom generated by `genPhant()`
     
@@ -304,47 +330,9 @@ def Enum2T2(arrPht:NDArray, B0:int|float) -> NDArray:
     Returns:
         T2 map of the given phantom
     """
-    mapT2 = zeros_like(arrPht, dtype=float64)
-    if B0==0.55:
-        mapT2[arrPht==Tissue.Air.value] = 1e-6
-        mapT2[arrPht==Tissue.Fat.value] = 100e-3
-        mapT2[arrPht==Tissue.Myo.value] = 60e-3
-        mapT2[arrPht==Tissue.Blood.value] = 260e-3
-        mapT2[arrPht==Tissue.Liver.value] = 55e-3
-        mapT2[arrPht==Tissue.Vessel.value] = 260e-3
-    elif B0==1.5:
-        mapT2[arrPht==Tissue.Air.value] = 1e-6
-        mapT2[arrPht==Tissue.Fat.value] = 80e-3
-        mapT2[arrPht==Tissue.Myo.value] = 45e-3
-        mapT2[arrPht==Tissue.Blood.value] = 275e-3
-        mapT2[arrPht==Tissue.Liver.value] = 46e-3
-        mapT2[arrPht==Tissue.Vessel.value] = 275e-3
-    elif B0==3.0:
-        mapT2[arrPht==Tissue.Air.value] = 1e-6
-        mapT2[arrPht==Tissue.Fat.value] = 70e-3
-        mapT2[arrPht==Tissue.Myo.value] = 40e-3
-        mapT2[arrPht==Tissue.Blood.value] = 120e-3
-        mapT2[arrPht==Tissue.Liver.value] = 40e-3
-        mapT2[arrPht==Tissue.Vessel.value] = 120e-3
-    elif B0==5.0:
-        mapT2[arrPht==Tissue.Air.value] = 1e-6
-        mapT2[arrPht==Tissue.Fat.value] = 60e-3
-        mapT2[arrPht==Tissue.Myo.value] = 35e-3
-        mapT2[arrPht==Tissue.Blood.value] = 90e-3
-        mapT2[arrPht==Tissue.Liver.value] = 34e-3
-        mapT2[arrPht==Tissue.Vessel.value] = 90e-3
-    elif B0==9.4:
-        mapT2[arrPht==Tissue.Air.value] = 1e-6
-        mapT2[arrPht==Tissue.Fat.value] = 50e-3
-        mapT2[arrPht==Tissue.Myo.value] = 20e-3
-        mapT2[arrPht==Tissue.Blood.value] = 40e-3
-        mapT2[arrPht==Tissue.Liver.value] = 25e-3
-        mapT2[arrPht==Tissue.Vessel.value] = 40e-3
-    else:
-        raise RuntimeError(f"B0={B0:.2f} not available.")
-    return mapT2
+    return Enum2Para(arrPht, B0, "T2")
 
-def Enum2T2s(arrPht:NDArray, B0:int|float) -> NDArray:
+def Enum2T2s(arrPht:NDArray, B0:str|int|float) -> NDArray:
     """
     get T2* map of a phantom generated by `genPhant()`
     
@@ -355,47 +343,9 @@ def Enum2T2s(arrPht:NDArray, B0:int|float) -> NDArray:
     Returns:
         T2* map of the given phantom
     """
-    mapT2s = zeros_like(arrPht, dtype=float64)
-    if B0==0.55:
-        mapT2s[arrPht==Tissue.Air.value] = 1e-6
-        mapT2s[arrPht==Tissue.Fat.value] = 70e-3
-        mapT2s[arrPht==Tissue.Myo.value] = 50e-3
-        mapT2s[arrPht==Tissue.Blood.value] = 80e-3
-        mapT2s[arrPht==Tissue.Liver.value] = 45e-3
-        mapT2s[arrPht==Tissue.Vessel.value] = 80e-3
-    elif B0==1.5:
-        mapT2s[arrPht==Tissue.Air.value] = 1e-6
-        mapT2s[arrPht==Tissue.Fat.value] = 50e-3
-        mapT2s[arrPht==Tissue.Myo.value] = 33e-3
-        mapT2s[arrPht==Tissue.Blood.value] = 55e-3
-        mapT2s[arrPht==Tissue.Liver.value] = 30e-3
-        mapT2s[arrPht==Tissue.Vessel.value] = 55e-3
-    elif B0==3.0:
-        mapT2s[arrPht==Tissue.Air.value] = 1e-6
-        mapT2s[arrPht==Tissue.Fat.value] = 35e-3
-        mapT2s[arrPht==Tissue.Myo.value] = 22e-3
-        mapT2s[arrPht==Tissue.Blood.value] = 30e-3
-        mapT2s[arrPht==Tissue.Liver.value] = 18e-3
-        mapT2s[arrPht==Tissue.Vessel.value] = 30e-3
-    elif B0==5.0:
-        mapT2s[arrPht==Tissue.Air.value] = 1e-6
-        mapT2s[arrPht==Tissue.Fat.value] = 25e-3
-        mapT2s[arrPht==Tissue.Myo.value] = 15e-3
-        mapT2s[arrPht==Tissue.Blood.value] = 18e-3
-        mapT2s[arrPht==Tissue.Liver.value] = 10e-3
-        mapT2s[arrPht==Tissue.Vessel.value] = 18e-3
-    elif B0==9.4:
-        mapT2s[arrPht==Tissue.Air.value] = 1e-6
-        mapT2s[arrPht==Tissue.Fat.value] = 15e-3
-        mapT2s[arrPht==Tissue.Myo.value] = 8e-3
-        mapT2s[arrPht==Tissue.Blood.value] = 10e-3
-        mapT2s[arrPht==Tissue.Liver.value] = 5e-3
-        mapT2s[arrPht==Tissue.Vessel.value] = 10e-3
-    else:
-        raise RuntimeError(f"B0={B0:.2f} not available.")
-    return mapT2s
+    return Enum2Para(arrPht, B0, "T2s")
 
-def Enum2Adc(arrPht:NDArray, B0:int|float) -> NDArray:
+def Enum2Adc(arrPht:NDArray, B0:str|int|float) -> NDArray:
     """
     get Apparent Diffusion Coefficient (ADC) map (in `m^2/s`) of a phantom generated by `genPhant()`
     
@@ -406,19 +356,9 @@ def Enum2Adc(arrPht:NDArray, B0:int|float) -> NDArray:
     Returns:
         ADC map of the given phantom
     """
-    mapADC = zeros_like(arrPht, dtype=float64)
-    if B0 in [0.55, 1.5, 3.0, 5.0, 9.4]:
-        mapADC[arrPht==Tissue.Air.value] = 0.0
-        mapADC[arrPht==Tissue.Fat.value] = 0.15e-9
-        mapADC[arrPht==Tissue.Myo.value] = 1.55e-9
-        mapADC[arrPht==Tissue.Blood.value] = 2.10e-9
-        mapADC[arrPht==Tissue.Liver.value] = 1.15e-9
-        mapADC[arrPht==Tissue.Vessel.value] = 2.10e-9
-    else:
-        raise RuntimeError(f"B0={B0:.2f} not available.")
-    return mapADC
+    return Enum2Para(arrPht, B0, "ADC")
 
-def Enum2Om(arrPht:NDArray, B0:int|float) -> NDArray:
+def Enum2Om(arrPht:NDArray, B0:str|int|float) -> NDArray:
     """
     get off-resonance map (in `rad/s`) of a phantom generated by `genPhant()`
     
@@ -429,12 +369,4 @@ def Enum2Om(arrPht:NDArray, B0:int|float) -> NDArray:
     Returns:
         off-resonance map of the given phantom
     """
-    mapOm = zeros_like(arrPht, dtype=float64)
-    ppm2om = 1e-6*(2*pi*42.58e6*B0)
-    mapOm[arrPht==Tissue.Air.value] = 0
-    mapOm[arrPht==Tissue.Fat.value] = 3.5*ppm2om
-    mapOm[arrPht==Tissue.Myo.value] = 0
-    mapOm[arrPht==Tissue.Blood.value] = 0
-    mapOm[arrPht==Tissue.Liver.value] = 0
-    mapOm[arrPht==Tissue.Vessel.value] = 0
-    return mapOm
+    return Enum2Para(arrPht, B0, "Om")

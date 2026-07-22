@@ -3,20 +3,20 @@ from matplotlib.pyplot import *
 from matplotlib.colors import ListedColormap
 import mrphantom as pht
 
-nDim = 3
+nAx = 3
 nPix = 128
 B0 = 5
 
 random.seed(0)
-mapPh = pht.genPhMap(nDim, nPix, std=pi/16)
-mapB0 = pht.genB0Map(nDim, nPix, std=1) # unit: ppm
+mapPh = pht.genPhMap((nPix,)*nAx, std=pi/16)
+mapB0 = pht.genB0Map((nPix,)*nAx, std=1) # unit: ppm
 
-arrPhant = pht.genPhant(nDim, nPix)
-mapM0 = pht.Enum2PD(arrPhant)
+arrPhant = pht.genPhant((nPix,)*nAx)
+mapPD = pht.Enum2PD(arrPhant, B0)
 mapT1 = pht.Enum2T1(arrPhant, B0)
 mapT2 = pht.Enum2T2(arrPhant, B0)
 mapOm = pht.Enum2Om(arrPhant, B0)
-mapC = pht.genCsm(nDim, nPix, mean=0, std=pi/16)
+mapC = pht.genCsm((nPix,)*nAx, mean=0, std=pi/16)
 
 # plot
 cmT1 = ListedColormap(loadtxt("./Resource/lipari.csv"), name="T1")
@@ -33,11 +33,10 @@ imshow(mapB0[:,nPix//2,:], vmin=-3, vmax=3)
 colorbar().set_label("ppm")
 title("B0 map")
 
-# M0 magnitude map, M0 phase map
-mapM0Abs = abs(mapM0)
+# PD, T1, T2, B0 map
 figure(figsize=(9,9), dpi=120)
 subplot(221)
-imshow(mapM0Abs[:,nPix//2,:], cmap="gray"); colorbar(); title("M0 map")
+imshow(mapPD[:,nPix//2,:], cmap="gray"); colorbar(); title("PD map")
 subplot(222)
 imshow(mapT1[:,nPix//2,:]*1000, cmap=cmT1); colorbar().set_label("ms"); title("T1 map")
 subplot(223)

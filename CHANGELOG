@@ -1,3 +1,6 @@
+3.0.0 (July 22, 2026)
+Now supports isotropic matrix size, fourier gaussian filter. We further use xml file to store parameters, instead hardcoding them in the code.
+
 2.2.1 (July 17, 2026)
 Fix issue in functions description.
 

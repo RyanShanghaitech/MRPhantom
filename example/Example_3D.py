@@ -29,11 +29,12 @@ axim2 = ax2.imshow(zeros([nPix,nPix]), cmap='gray', vmin=0, vmax=1)
 ax3 = fig.add_subplot(133)
 axim3 = ax3.imshow(zeros([nPix,nPix]), cmap='gray', vmin=0, vmax=1)
 
+mpt.initSS_bSSFP(1.5)
 while 1:
     for iT in range(0,nT,10):
         t = time()
-        arrPhant = mpt.genPhant(3, nPix, arrAmpRes[iT], arrAmpCar[iT])
-        arrM0 = mpt.Enum2SS(arrPhant, arrAmpCar[iT])
+        arrPhant = mpt.genPhant((nPix,)*3, arrAmpRes[iT], arrAmpCar[iT])
+        arrM0 = mpt.Enum2SS(arrPhant)
         arrM0Abs = abs(arrM0/arrM0.max())
         if iT%10==0: print(f"{(time()-t)*1e3:.3f} ms / frame")
         
