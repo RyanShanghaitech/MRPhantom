@@ -1,3 +1,6 @@
+3.0.1 (July 22, 2026)
+Fix filenotfound error when reading xml parameter file.
+
 3.0.0 (July 22, 2026)
 Now supports isotropic matrix size, fourier gaussian filter. We further use xml file to store parameters, instead hardcoding them in the code.
 

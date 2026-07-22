@@ -1,6 +1,7 @@
 from . import utility
+from importlib.resources import files
 
-with open("test/nmr_para.xml") as f:
+with files(__package__).joinpath("nmr_para.xml").open("r") as f:
     dictNmrPara = utility.xml2dict(f)
 lstTissue = list(dictNmrPara.keys())
 
