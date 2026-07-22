@@ -185,7 +185,7 @@ def fB02strB0(B0:int|float) -> str:
     if isclose(B0,0.55): return "B0_0T55"
     if isclose(B0,1.5): return "B0_1T5"
     if isclose(B0,3.0): return "B0_3T"
-    if isclose(B0,5.0): return "B0_5T0"
+    if isclose(B0,5.0): return "B0_5T"
     if isclose(B0,9.4): return "B0_9T4"
     raise RuntimeError("unsupported B0")
 

@@ -1,3 +1,6 @@
+3.0.2 (July 22, 2026)
+Fix a keyerror in `fB02strB0`.
+
 3.0.1 (July 22, 2026)
 Fix filenotfound error when reading xml parameter file.
 

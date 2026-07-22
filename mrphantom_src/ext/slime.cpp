@@ -72,7 +72,7 @@ bool genPhant
 
     /* generate phantom given by `ampRes` and `ampCar` here */
     #pragma omp parallel for schedule(static)
-    for (int64_t i = 0; i < nPixSum; ++i)
+    for (size_t i = 0; i < nPixSum; ++i)
     {
         // derive coordinates
         const int64_t x = i%nX - nX/2;
